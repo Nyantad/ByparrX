@@ -8,8 +8,6 @@ from starlette.testclient import TestClient
 from main import app
 from src.models import LinkRequest
 
-client = TestClient(app)
-
 test_websites = [
     "https://ext.to/",
     # "https://www.ygg.re/",
@@ -20,8 +18,15 @@ test_websites = [
 ]
 
 
+@pytest.fixture
+def client():
+    """Create a test client with proper lifespan handling for browser initialization."""
+    with TestClient(app) as test_client:
+        yield test_client
+
+
 @pytest.mark.parametrize("website", test_websites)
-def test_bypass(website: str):
+def test_bypass(client: TestClient, website: str):
     """
     Tests if the service can bypass cloudflare/DDOS-GUARD on given websites.
 
@@ -50,12 +55,16 @@ def test_bypass(website: str):
     assert response.status_code == HTTPStatus.OK
 
 
-def test_health_check():
+def test_health_check(client: TestClient):
     """
     Tests the health check endpoint.
 
-    This test ensures that the health check
-    endpoint returns HTTPStatus.OK.
+    This test ensures that the health check endpoint returns HTTPStatus.OK
+    and the response body contains the expected fields.
     """
     response = client.get("/health")
     assert response.status_code == HTTPStatus.OK
+    data = response.json()
+    assert "userAgent" in data
+    assert "version" in data
+    assert data["msg"] == "Byparr is working!"
