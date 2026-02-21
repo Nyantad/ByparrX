@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import sys
+from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI
@@ -11,12 +12,21 @@ from fastapi.middleware.gzip import GZipMiddleware
 from src.consts import HOST, LOG_LEVEL, PORT, VERSION
 from src.endpoints import health_check, router
 from src.middlewares import LogRequest
-from src.utils import get_camoufox, logger
+from src.utils import browser_manager, get_camoufox, logger
 
 logger.info("Using version %s", VERSION)
 logger.info("Log level set to %s", logging.getLevelName(LOG_LEVEL))
 
-app = FastAPI(debug=LOG_LEVEL == logging.DEBUG, log_level=LOG_LEVEL)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage app lifecycle – pre-launch browser on startup, shut down on exit."""
+    await browser_manager.warmup()
+    yield
+    await browser_manager.shutdown()
+
+
+app = FastAPI(debug=LOG_LEVEL == logging.DEBUG, log_level=LOG_LEVEL, lifespan=lifespan)
 app.add_middleware(GZipMiddleware)
 app.add_middleware(LogRequest)
 

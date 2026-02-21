@@ -21,6 +21,11 @@ class LinkRequest(BaseModel):
         default=60,
         description="Maximum timeout in seconds for resolving the anti-bot challenge.",
     )
+    return_only_cookies: bool = Field(
+        default=False,
+        alias="returnOnlyCookies",
+        description="When true, return existing cookies without navigating if available.",
+    )
 
 
 class HealthcheckResponse(BaseModel):
